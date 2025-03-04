@@ -1,26 +1,47 @@
+#include "rtos.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include "rtos.h"
+#include <ucontext.h>
 
-// Global variables for task management
+// Global task pointers.
 TCB_t *taskList = NULL;
 TCB_t *currentTask = NULL;
 static int taskCount = 0;
+
+// Idle task definition.
+static void idleTask(void) {
+    while (1) {
+        // The idle task simply yields control, allowing delay ticks to be decremented.
+        RTOS_Yield();
+    }
+}
+
+// Internal function to simulate a tick (decrement delay counters).
+static void internal_RTOS_Tick(void) {
+    if (taskList == NULL) return;
+    TCB_t *temp = taskList;
+    do {
+        if (temp->delayTicks > 0)
+            temp->delayTicks--;
+        temp = temp->next;
+    } while (temp != taskList);
+}
 
 void RTOS_Init(void) {
     taskList = NULL;
     currentTask = NULL;
     taskCount = 0;
+    // Create the idle task first.
+    RTOS_CreateTask(idleTask);
 }
 
 int RTOS_CreateTask(TaskFunction_t task) {
-    if (taskCount >= MAX_TASKS) {
+    if (taskCount >= MAX_TASKS)
         return -1;
-    }
     TCB_t *newTask = (TCB_t *)malloc(sizeof(TCB_t));
-    if (!newTask) return -1;
+    if (!newTask)
+        return -1;
     
-    // Initialize the task context
     if (getcontext(&newTask->context) == -1) {
         free(newTask);
         return -1;
@@ -31,11 +52,14 @@ int RTOS_CreateTask(TaskFunction_t task) {
         return -1;
     }
     newTask->context.uc_stack.ss_size = STACK_SIZE;
-    newTask->context.uc_link = NULL; // When the task finishes, there's no continuation
+    newTask->context.uc_link = NULL;
     newTask->state = TASK_READY;
+    newTask->delayTicks = 0;
+    newTask->message = NULL;
+    
     makecontext(&newTask->context, task, 0);
     
-    // Add the new task to the circular task list
+    // Insert new task into circular linked list.
     if (taskList == NULL) {
         taskList = newTask;
         newTask->next = newTask;
@@ -51,18 +75,24 @@ int RTOS_CreateTask(TaskFunction_t task) {
 }
 
 void RTOS_Yield(void) {
-    if (currentTask == NULL) return;
     TCB_t *prevTask = currentTask;
-    // Find the next READY task (skip those that are BLOCKED)
+    internal_RTOS_Tick(); // Decrement delay counters.
     do {
         currentTask = currentTask->next;
-    } while (currentTask->state == TASK_BLOCKED && currentTask != prevTask);
+    } while (currentTask->delayTicks > 0 || currentTask->state == TASK_BLOCKED);
     swapcontext(&prevTask->context, &currentTask->context);
 }
 
+void RTOS_Delay(uint32_t ticks) {
+    if (currentTask != NULL) {
+        currentTask->delayTicks = ticks;
+        RTOS_Yield();
+    }
+}
+
 void RTOS_Start(void) {
-    if (taskList == NULL) return;
+    if (taskList == NULL)
+        return;
     currentTask = taskList;
-    // Begin execution with the first task
     setcontext(&currentTask->context);
 }

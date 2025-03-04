@@ -1,11 +1,11 @@
-#include "callback_mq.h"
+#include "mq.h"
 #include <stdlib.h>
 
-void callback_mq_init(CallbackMessageQueue *queue) {
+void mq_init(MQ_t *queue) {
     queue->subscribers = NULL;
 }
 
-int callback_mq_subscribe(CallbackMessageQueue *queue, MessageCallback_t callback, void *context) {
+int mq_subscribe(MQ_t *queue, MessageCallback_t callback, void *context) {
     if (!callback) return -1;
     CallbackNode *node = (CallbackNode *)malloc(sizeof(CallbackNode));
     if (!node) return -1;
@@ -16,7 +16,7 @@ int callback_mq_subscribe(CallbackMessageQueue *queue, MessageCallback_t callbac
     return 0;
 }
 
-int callback_mq_unsubscribe(CallbackMessageQueue *queue, MessageCallback_t callback, void *context) {
+int mq_unsubscribe(MQ_t *queue, MessageCallback_t callback, void *context) {
     CallbackNode **prev = &queue->subscribers;
     while (*prev) {
         CallbackNode *curr = *prev;
@@ -30,7 +30,7 @@ int callback_mq_unsubscribe(CallbackMessageQueue *queue, MessageCallback_t callb
     return -1;
 }
 
-void callback_mq_publish(CallbackMessageQueue *queue, void *message) {
+void mq_publish(MQ_t *queue, void *message) {
     CallbackNode *curr = queue->subscribers;
     while (curr) {
         curr->callback(message, curr->context);

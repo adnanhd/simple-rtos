@@ -1,54 +1,50 @@
-#include <stdio.h>
 #include "rtos.h"
-#include "rtos_kernel.h"
-#include "callback_mq.h"
+#include "net.h"
+#include <stdio.h>
 
-// Declare a global callback message queue.
-CallbackMessageQueue msgQueue;
-
-void SenderTask(void) {
-    int counter = 0;
-    char msgBuffer[50];
+void NetSimTask(void) {
+    int count = 10000;
+    char msg[50];
     while (1) {
-        // Prepare a message.
-        sprintf(msgBuffer, "Message %d from SenderTask", counter++);
-        printf("SenderTask: Publishing message...\n");
-        callback_mq_publish(&msgQueue, msgBuffer);
-        RTOS_Delay(4000000);  // Delay for 4 ticks before sending next message.
+        sprintf(msg, "Packet %d", count++);
+        printf("NetSimTask: Simulating packet: %s\n", msg);
+        net_sim(msg);
+        net_sim(msg);
+        RTOS_Delay(5000000);
     }
 }
 
-void ReceiverTask(void) {
+void NetRecvTask1(void) {
+    char buf[100];
+    size_t rlen;
     while (1) {
-        printf("ReceiverTask: Waiting for a message...\n");
-        RTOS_WaitMessage(&msgQueue);  // Block until a message is published.
-        char *received = (char *)RTOS_GetMessage();
-        printf("ReceiverTask: Received: %s\n", received);
-        RTOS_Delay(2000000);  // Optionally delay before waiting again.
+        printf("NetRecvTask1: Waiting for packet...\n");
+        net_receive(buf, sizeof(buf), &rlen);
+        printf("NetRecvTas1: Received: %s\n", buf);
+        RTOS_Delay(3);
     }
 }
 
-void OtherTask(void) {
-    int count = 0;
+void NetRecvTask2(void) {
+    char buf[100];
+    size_t rlen;
     while (1) {
-        printf("OtherTask: Doing independent work (%d)\n", count++);
-        RTOS_Delay(300000);
+        printf("NetRecvTask2: Waiting for packet...\n");
+        net_receive(buf, sizeof(buf), &rlen);
+        printf("NetRecvTask2: Received: %s\n", buf);
+        RTOS_Delay(3);
     }
 }
 
 int main(void) {
-    // Initialize the callback message queue.
-    callback_mq_init(&msgQueue);
-    
-    // Initialize the RTOS.
+    if (net_init() != 0) {
+        printf("Network initialization failed\n");
+        return -1;
+    }
     RTOS_Init();
-    
-    // Create user tasks. (Note: idleTask is automatically created in RTOS_Init.)
-    RTOS_CreateTask(SenderTask);
-    RTOS_CreateTask(ReceiverTask);
-    RTOS_CreateTask(OtherTask);
-    
-    // Start the RTOS scheduler.
+    RTOS_CreateTask(NetSimTask);
+    RTOS_CreateTask(NetRecvTask1);
+    RTOS_CreateTask(NetRecvTask2);
     RTOS_Start();
     return 0;
 }

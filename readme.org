@@ -14,12 +14,12 @@ It demonstrates:
 * Project Structure
 - ~include/~
   - ~rtos.h~: RTOS API definitions, TCB, Semaphore_t, and function declarations.
-  - ~callback_mq.h~: Callback-based message queue API.
+  - ~mq.h~: Callback-based message queue API.
 - ~src/~
   - ~rtos_kernel.c~: Core kernel functions (task creation, yield, delay, and scheduler).
   - ~rtos_semaphore.c~: Semaphore API implementation.
-  - ~memory_alloc.c~: Custom memory allocator.
-  - ~callback_mq.c~: Callback message queue implementation.
+  - ~mem.c~: Custom memory allocator.
+  - ~mq.c~: Callback message queue implementation.
   - ~main.c~: Example application with non-dummy tasks.
 - ~CMakeLists.txt~: CMake build configuration.
 
