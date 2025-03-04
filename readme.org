@@ -1,0 +1,68 @@
+#+TITLE: SimpleRTOS Project
+#+AUTHOR: Your Name
+#+DATE: 2025-03-04
+
+* Overview
+This project implements a primitive real-time operating system (RTOS) for educational purposes.
+It demonstrates:
+- Round-robin scheduling with task delays.
+- A basic idle task.
+- Semaphore-based synchronization.
+- A callback-based message queue with integrated wait and signaling.
+- A versatile scheduler that combines round-robin and event-based task unblocking.
+
+* Project Structure
+- ~include/~
+  - ~rtos.h~: RTOS API definitions, TCB, Semaphore_t, and function declarations.
+  - ~callback_mq.h~: Callback-based message queue API.
+- ~src/~
+  - ~rtos_kernel.c~: Core kernel functions (task creation, yield, delay, and scheduler).
+  - ~rtos_semaphore.c~: Semaphore API implementation.
+  - ~memory_alloc.c~: Custom memory allocator.
+  - ~callback_mq.c~: Callback message queue implementation.
+  - ~main.c~: Example application with non-dummy tasks.
+- ~CMakeLists.txt~: CMake build configuration.
+
+* Features
+- *Task Management:* Create tasks with their own stacks using a custom allocator.
+- *Scheduling:* Round-robin scheduling with delay support.
+- *Idle Task:* Runs when no other tasks are ready.
+- *Inter-task Communication:* 
+  - Semaphores for basic synchronization.
+  - Callback-based message queue to publish messages and unblock waiting tasks.
+- *Primitive IPC:* A task can wait for a message, and when a message is published, it is signaled via a callback.
+
+* Build Instructions
+1. Install CMake (minimum version 3.10) and a C compiler that supports C11.
+2. From the project root, create a build directory:
+   #+BEGIN_SRC sh
+     mkdir build && cd build
+   #+END_SRC
+3. Generate build files with CMake:
+   #+BEGIN_SRC sh
+     cmake ..
+   #+END_SRC
+4. Build the project:
+   #+BEGIN_SRC sh
+     cmake --build .
+   #+END_SRC
+
+* Running the Project
+After a successful build, run the generated executable (e.g., `SimpleRTOS`):
+   #+BEGIN_SRC sh
+     ./SimpleRTOS
+   #+END_SRC
+
+The executable demonstrates several tasks:
+- A SenderTask that publishes messages.
+- A ReceiverTask that waits for and processes messages.
+- An OtherTask that performs independent work.
+- An idle task runs automatically when no tasks are ready.
+
+* Notes
+- This RTOS is a simplified, educational implementation and is not suitable for production use.
+- The context switching uses the POSIX ucontext API and simulates task delays.
+- Further enhancements (e.g., advanced context switching in assembly, real hardware interrupt handling) would be needed for a full RTOS.
+
+* License
+This project is provided as-is for educational purposes.
