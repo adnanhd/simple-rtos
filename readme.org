@@ -1,68 +1,150 @@
-#+TITLE: SimpleRTOS Project
-#+AUTHOR: Your Name
-#+DATE: 2025-03-04
+#+TITLE: RTOS — Bare-Metal ARM Real-Time Microkernel
+#+DATE: 2026-02-20
 
 * Overview
-This project implements a primitive real-time operating system (RTOS) for educational purposes.
-It demonstrates:
-- Round-robin scheduling with task delays.
-- A basic idle task.
-- Semaphore-based synchronization.
-- A callback-based message queue with integrated wait and signaling.
-- A versatile scheduler that combines round-robin and event-based task unblocking.
+A minimal real-time microkernel targeting *ARMv7-A* (Cortex-A7).
+Runs bare-metal on *QEMU* (~raspi2b~) and *Raspberry Pi* 2/3/4 hardware.
+
+Features:
+- Priority-based preemptive scheduler (8 levels, round-robin within level)
+- Timer-driven preemption via ARM Timer IRQ
+- Cooperative yield and task sleep
+- Counting semaphores with blocking wait
+- IPC message queues (ring buffer, blocking send/receive)
+- Pub/sub message queue with callbacks
+- K&R-style memory allocator
+- PL011 UART serial console
+- Minimal ~kprintf~ (~%d~, ~%u~, ~%x~, ~%s~, ~%c~, ~%p~)
 
 * Project Structure
-- ~include/~
-  - ~rtos.h~: RTOS API definitions, TCB, Semaphore_t, and function declarations.
-  - ~mq.h~: Callback-based message queue API.
-- ~src/~
-  - ~rtos_kernel.c~: Core kernel functions (task creation, yield, delay, and scheduler).
-  - ~rtos_semaphore.c~: Semaphore API implementation.
-  - ~mem.c~: Custom memory allocator.
-  - ~mq.c~: Callback message queue implementation.
-  - ~main.c~: Example application with non-dummy tasks.
-- ~CMakeLists.txt~: CMake build configuration.
+#+BEGIN_SRC
+bare-metal/              Bare-metal ARM kernel
+├── Makefile             ARM cross-compilation
+├── Makefile.test        Host unit tests (x86, Unity)
+├── kernel.ld            Linker script (kernel at 0x8000)
+├── CMakeLists.txt       CMake test config (alternative to Makefile.test)
+├── include/             Headers
+│   ├── types.h          Freestanding type definitions
+│   ├── platform.h       MMIO helpers, peripheral base addresses
+│   ├── kernel.h         TCB struct, task states, constants
+│   ├── scheduler.h      Scheduler API
+│   ├── semaphore.h      Semaphore API
+│   ├── ipc.h            IPC queue API
+│   ├── mq.h             Pub/sub message queue API
+│   ├── mem.h            Memory allocator API
+│   ├── irq.h            IRQ enable/disable/restore
+│   ├── uart.h           UART driver API
+│   ├── timer.h          Timer driver API
+│   └── kprintf.h        Minimal printf API
+├── arch/                ARM assembly
+│   ├── startup.s        Boot: vector table, stacks, BSS clear
+│   ├── context_switch.s Register save/restore (r0-r12, lr, cpsr)
+│   └── vectors.s        IRQ exception handler stub
+├── kernel/              Kernel modules
+│   ├── kernel.c         kernel_main, task_create, task_yield, task_sleep
+│   ├── scheduler.c      Priority ready queues, tick handler
+│   ├── semaphore.c      Counting semaphores
+│   ├── ipc.c            Ring-buffer IPC with blocking
+│   ├── mq.c             Pub/sub callbacks
+│   ├── mem.c            K&R memory allocator
+│   ├── irq.c            IRQ dispatch, timer preemption
+│   └── kprintf.c        Minimal printf
+├── drivers/
+│   ├── uart.c           PL011 UART (RPi2/3/4, QEMU raspi2b)
+│   └── timer.c          BCM2835 ARM Timer
+├── app/
+│   └── main.c           Demo tasks (priorities, semaphore, IPC)
+└── tests/               Unit tests (Unity framework)
+    ├── test_mem.c        11 tests
+    ├── test_mq.c         8 tests
+    ├── test_scheduler.c  8 tests
+    ├── test_semaphore.c  7 tests
+    ├── test_ipc.c        7 tests
+    ├── test_kprintf.c    15 tests
+    └── unity/            Unity test framework (vendored)
 
-* Features
-- *Task Management:* Create tasks with their own stacks using a custom allocator.
-- *Scheduling:* Round-robin scheduling with delay support.
-- *Idle Task:* Runs when no other tasks are ready.
-- *Inter-task Communication:* 
-  - Semaphores for basic synchronization.
-  - Callback-based message queue to publish messages and unblock waiting tasks.
-- *Primitive IPC:* A task can wait for a message, and when a message is published, it is signaled via a callback.
+src/                     Original simulation RTOS (Linux/POSIX)
+include/                 Original simulation headers
+CMakeLists.txt           Original simulation build
+#+END_SRC
 
-* Build Instructions
-1. Install CMake (minimum version 3.10) and a C compiler that supports C11.
-2. From the project root, create a build directory:
-   #+BEGIN_SRC sh
-     mkdir build && cd build
+* Prerequisites
+** Cross-compiler (for bare-metal build)
+#+BEGIN_SRC sh
+sudo pacman -S arm-none-eabi-gcc arm-none-eabi-newlib
+#+END_SRC
+
+** QEMU (for testing)
+#+BEGIN_SRC sh
+sudo pacman -S qemu-system-arm
+#+END_SRC
+
+** Host build tools (for unit tests)
+~gcc~ and ~make~ (already installed on most systems).
+
+* Building
+** Bare-metal kernel (ARM cross-compilation)
+#+BEGIN_SRC sh
+cd bare-metal
+make
+#+END_SRC
+
+Outputs:
+- ~build/kernel.elf~ — ELF for QEMU / GDB
+- ~build/kernel.bin~ — raw binary
+- ~build/kernel7.img~ — RPi bootloader image
+- ~build/kernel.list~ — disassembly listing
+
+** Unit tests (host x86)
+#+BEGIN_SRC sh
+cd bare-metal
+make -f Makefile.test test
+#+END_SRC
+
+Runs all 56 tests across 6 modules.
+
+* Running
+** QEMU
+#+BEGIN_SRC sh
+cd bare-metal
+make qemu
+#+END_SRC
+
+This runs ~qemu-system-arm -M raspi2b~ with serial output on stdio.
+
+** QEMU with GDB debugging
+#+BEGIN_SRC sh
+# Terminal 1
+cd bare-metal
+make qemu-debug
+
+# Terminal 2
+arm-none-eabi-gdb build/kernel.elf -ex "target remote :1234"
+#+END_SRC
+
+** Raspberry Pi hardware
+1. Format an SD card as FAT32.
+2. Copy RPi firmware files to the SD card root:
+   - ~bootcode.bin~, ~start.elf~, ~fixup.dat~ (from [[https://github.com/raspberrypi/firmware/tree/master/boot][raspberrypi/firmware]])
+3. Copy ~build/kernel7.img~ to the SD card root.
+4. Optionally create ~config.txt~:
+   #+BEGIN_SRC
+   kernel=kernel7.img
+   arm_64bit=0
    #+END_SRC
-3. Generate build files with CMake:
-   #+BEGIN_SRC sh
-     cmake ..
-   #+END_SRC
-4. Build the project:
-   #+BEGIN_SRC sh
-     cmake --build .
-   #+END_SRC
+5. Connect a USB-to-serial adapter to GPIO 14 (TX) and GPIO 15 (RX).
+6. Open a serial terminal at 115200 baud (e.g. ~minicom -b 115200 -D /dev/ttyUSB0~).
+7. Insert SD card and power on.
 
-* Running the Project
-After a successful build, run the generated executable (e.g., `SimpleRTOS`):
-   #+BEGIN_SRC sh
-     ./SimpleRTOS
-   #+END_SRC
-
-The executable demonstrates several tasks:
-- A SenderTask that publishes messages.
-- A ReceiverTask that waits for and processes messages.
-- An OtherTask that performs independent work.
-- An idle task runs automatically when no tasks are ready.
-
-* Notes
-- This RTOS is a simplified, educational implementation and is not suitable for production use.
-- The context switching uses the POSIX ucontext API and simulates task delays.
-- Further enhancements (e.g., advanced context switching in assembly, real hardware interrupt handling) would be needed for a full RTOS.
+* Architecture
+- *Target:* ARMv7-A (AArch32), Cortex-A7
+- *Kernel mode:* SVC (Supervisor)
+- *Single-core:* Cores 1-3 parked at boot
+- *Memory:* Kernel loaded at ~0x8000~, 1MB heap, dedicated mode stacks
+- *Scheduling:* 8 priority levels (0=highest), round-robin within level, 10-tick time slices
+- *Preemption:* ARM Timer fires every 1ms, IRQ handler checks time slice and context switches
+- *Critical sections:* ~irq_disable()~ / ~irq_restore()~ around shared state
+- *Peripherals:* BCM2835 base ~0x3F000000~ (RPi2/3), ~0xFE000000~ (RPi4 via ~PLATFORM_RPI4~)
 
 * License
 This project is provided as-is for educational purposes.
