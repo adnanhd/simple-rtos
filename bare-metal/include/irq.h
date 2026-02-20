@@ -9,5 +9,6 @@
  */
 uint32_t irq_disable(void);
 void irq_restore(uint32_t flags);
+void irq_enable(void);
 
 #endif /* RTOS_IRQ_H */

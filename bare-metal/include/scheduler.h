@@ -8,6 +8,8 @@ void scheduler_add_task(TCB_t *tcb);
 void scheduler_remove_task(TCB_t *tcb);
 TCB_t *scheduler_select_next(void);
 void scheduler_tick(void);
+TCB_t *scheduler_alloc_task(void);
+TCB_t *scheduler_get_task_pool(void);
 
 extern TCB_t *current_tcb;
 
