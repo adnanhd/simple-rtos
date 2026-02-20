@@ -1,0 +1,42 @@
+# Makefile for host unit tests (x86, using Unity framework)
+
+CC      = gcc
+CFLAGS  = -std=c11 -Wall -Wextra -g -Iinclude -Itests/unity/src
+LDFLAGS =
+
+UNITY_SRC = tests/unity/src/unity.c
+
+BUILD   = build/tests
+
+.PHONY: all test clean
+
+all: test
+
+# --- test_mem ---
+$(BUILD)/test_mem: tests/test_mem.c kernel/mem.c $(UNITY_SRC) | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# --- test targets list (extended per phase) ---
+TESTS = $(BUILD)/test_mem
+
+test: $(TESTS)
+	@echo "=== Running all tests ==="
+	@pass=0; fail=0; total=0; \
+	for t in $(TESTS); do \
+		total=$$((total + 1)); \
+		echo "--- Running $$t ---"; \
+		if $$t; then \
+			pass=$$((pass + 1)); \
+		else \
+			fail=$$((fail + 1)); \
+		fi; \
+		echo; \
+	done; \
+	echo "=== Results: $$pass/$$total passed, $$fail failed ==="; \
+	[ $$fail -eq 0 ]
+
+$(BUILD):
+	mkdir -p $(BUILD)
+
+clean:
+	rm -rf $(BUILD)
