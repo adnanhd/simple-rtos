@@ -16,8 +16,12 @@ all: test
 $(BUILD)/test_mem: tests/test_mem.c kernel/mem.c $(UNITY_SRC) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+# --- test_mq ---
+$(BUILD)/test_mq: tests/test_mq.c kernel/mq.c kernel/mem.c $(UNITY_SRC) | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
 # --- test targets list (extended per phase) ---
-TESTS = $(BUILD)/test_mem
+TESTS = $(BUILD)/test_mem $(BUILD)/test_mq
 
 test: $(TESTS)
 	@echo "=== Running all tests ==="
