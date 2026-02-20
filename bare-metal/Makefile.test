@@ -28,8 +28,12 @@ $(BUILD)/test_scheduler: tests/test_scheduler.c kernel/scheduler.c $(UNITY_SRC) 
 $(BUILD)/test_semaphore: tests/test_semaphore.c kernel/semaphore.c kernel/scheduler.c $(UNITY_SRC) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+# --- test_ipc ---
+$(BUILD)/test_ipc: tests/test_ipc.c kernel/ipc.c kernel/mem.c kernel/scheduler.c $(UNITY_SRC) | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
 # --- test targets list (extended per phase) ---
-TESTS = $(BUILD)/test_mem $(BUILD)/test_mq $(BUILD)/test_scheduler $(BUILD)/test_semaphore
+TESTS = $(BUILD)/test_mem $(BUILD)/test_mq $(BUILD)/test_scheduler $(BUILD)/test_semaphore $(BUILD)/test_ipc
 
 test: $(TESTS)
 	@echo "=== Running all tests ==="
