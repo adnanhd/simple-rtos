@@ -24,8 +24,12 @@ $(BUILD)/test_mq: tests/test_mq.c kernel/mq.c kernel/mem.c $(UNITY_SRC) | $(BUIL
 $(BUILD)/test_scheduler: tests/test_scheduler.c kernel/scheduler.c $(UNITY_SRC) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+# --- test_semaphore ---
+$(BUILD)/test_semaphore: tests/test_semaphore.c kernel/semaphore.c kernel/scheduler.c $(UNITY_SRC) | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
 # --- test targets list (extended per phase) ---
-TESTS = $(BUILD)/test_mem $(BUILD)/test_mq $(BUILD)/test_scheduler
+TESTS = $(BUILD)/test_mem $(BUILD)/test_mq $(BUILD)/test_scheduler $(BUILD)/test_semaphore
 
 test: $(TESTS)
 	@echo "=== Running all tests ==="
